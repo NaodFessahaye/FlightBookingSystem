@@ -1,406 +1,503 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <algorithm>
 #include <iomanip>
+#include <limits>
+
+
 
 using namespace std;
 
-void mainMenu();
+class Person {
+public:
+    string name;
+    string username;
+    string password;
 
-class Management{
-    public:
-        Management(){
-            mainMenu();
-        }
+    Person(const string& n, const string& u, const string& p) {
+        name = n;
+        username = u;
+        password = p;
+    }
 
+    string getUsername() const {
+        return username;
+    }
+
+    void setUsername(const string& u) {
+        username = u;
+    }
+
+    string getName() const {
+        return name;
+    }
+
+    void setName(const string& n) {
+        name = n;
+    }
+
+    string getPassword() const {
+        return password;
+    }
+
+    void setPassword(const string& p) {
+        password = p;
+    }
+
+    bool authenticate(const string& inputUsername, const string& inputPassword) const {
+        return toLower(getUsername()) == toLower(inputUsername) && getPassword() == inputPassword;
+    }
+
+private:
+    string toLower(const string& str) const {
+        string lowerstr = str;
+        transform(lowerstr.begin(), lowerstr.end(), lowerstr.begin(), ::tolower);
+        return lowerstr;
+    }
 };
 
-class Details{
-    public:
-        static string name, gender;
-        int phonenum;
-        int age;
-        string add;
-        static int cId;
-        char arr[100];
+class Customer : public Person {
+public:
+    vector<string> destinations;
+    vector<double> flightprices;
+    int points;
 
-        void information(){
-            cout<<"enter id";
-            cin>>cId;
-            cout<<"enter name";
-            cin>>name;
-            cout<<"enter age";
-            cin>>age;
-            cout<<"enter address";
-            cin>>add;
-            cout<<"enter gender";
-            cin>>gender;
+    Customer(const string& n, const string& u, const string& p, int pts = 0) : Person{n, u, p}, points(pts) {}
+
+    int getPoints() const { return points; }
+
+    void setPoints(int p) { points = p; }
+
+    void chooseFlight(const string& dest, double price) {
+        destinations.push_back(dest);
+        flightprices.push_back(price);
+        points += 100;
+    }
+
+    string getMembershipStatus() const {
+        if (points < 500) {
+            return "Bronze";
+        } else if (points >= 500 && points < 1000) {
+            return "Silver";
+        } else {
+            return "Gold";
         }
+    }
+
+    void displayChosenFlights() const {
+        cout << "Customer: " << getName() << "\n";
+        cout << "Chosen flights:\n";
+        for (int i = 0; i < destinations.size(); i++) {
+            cout << "Destination: " << destinations[i] << " Flight Price: $" << fixed << setprecision(2) << flightprices[i] << "\n";
+        }
+        cout << "Total Points: " << getPoints() << "\n";
+        cout << "Membership Status: " << getMembershipStatus() << "\n";
+    }
+
+    // Function to save customer data to a file
+    void saveCustomerData(ofstream& outfile) const {
+        outfile << getName() << "," << getUsername() << "," << getPassword() << "," << getPoints() << "\n";
+        for (size_t i = 0; i < destinations.size(); i++) {
+            outfile << destinations[i] << "," << flightprices[i] << "\n";
+        }
+        outfile << "EndFlightData\n";
+    }
+
+    // Function to load customer data from a file
+    void loadCustomerData(ifstream& infile) {
+        string line;
+        getline(infile, line);
+        stringstream ss(line);
+        string name, username, password;
+        int pts;
+        getline(ss, name, ',');
+        getline(ss, username, ',');
+        getline(ss, password, ',');
+        ss >> pts;
+        setPoints(pts);
+        setName(name);
+        setUsername(username);
+        setPassword(password);
+         
+
+        while (getline(infile, line) && line != "EndFlightData") {
+            stringstream fs(line);
+            string dest;
+            double price;
+            getline(fs, dest, ',');
+            fs >> price;
+            chooseFlight(dest, price);
+        }
+    }
 };
 
-int Details::cId;
-string Details::name;
-string Details::gender;
+class Flight {
+public:
+    string destination;
+    int availableSeats;
+    double price;
 
-class registeration{
-    public:
-        static int choice;
-        int choice1;
-        int back;
-        static float charges;
+    Flight(const string& dest, int seats, double p) {
+        destination = dest;
+        availableSeats = seats;
+        price = p;
+    }
 
-        ;
+    string getDestination() const { return destination; }
+    void setDestination(const string& dest) { destination = dest; }
 
-        void flights(){
-            string flightsN[]={"Dubai","Canada","USA","UK","JAPAN","GERMAN"};
-            int len = sizeof(flightsN) / sizeof(flightsN[0]);
-            for(int a=0;a<len;a++){
-                cout<<(a+1)<<"flight to"<<flightsN[a]<<endl;
-            
+    int getAvailableSeats() const { return availableSeats; }
+    void setAvailableSeats(int seats) { availableSeats = seats; }
+
+    double getPrice() const { return price; }
+    void setPrice(double p) { price = p; }
+
+    // Function to save flight data to a file
+    void saveFlightData(ofstream& outfile) const {
+        outfile << destination << "," << availableSeats << "," << price << "\n";
+    }
+
+    // Function to load flight data from a file
+    void loadFlightData(ifstream& infile) {
+        string line;
+        getline(infile, line);
+        stringstream ss(line);
+        string dest;
+        int seats;
+        double price;
+        getline(ss, dest, ',');
+        ss >> seats;
+        ss.ignore();
+        ss >> price;
+        setDestination(dest);
+        setAvailableSeats(seats);
+        setPrice(price);
+    }
+};
+
+class Owner : public Person {
+public:
+    Owner() : Person{"Admin", "admin", "admin"} {}
+
+    void addFlight(vector<Flight>& flights, const string& dest, int seats, double price) {
+        flights.push_back(Flight(dest, seats, price));
+        cout << "Flight added successfully\n";
+    }
+
+    void removeFlight(vector<Flight>& flights, int index) {
+        if (index > 0 && index <= static_cast<int>(flights.size())) {
+            flights.erase(flights.begin() + index - 1);
+            cout << "Flight removed successfully!\n";
+        } else {
+            cout << "Invalid flight index!\n";
+        }
+    }
+};
+
+bool isUsernameTaken(const vector<Customer>& customers, const string& username) {
+    for (const auto& customer : customers) {
+        if (customer.getUsername() == username) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void saveCustomers(const vector<Customer>& customers) {
+    ofstream outfile("customers.txt");
+    if (outfile.is_open()) {
+        for (const auto& customer : customers) {
+            customer.saveCustomerData(outfile);
+        }
+        outfile.close();
+    } else {
+        cout << "Error opening customers file for writing.\n";
+    }
+}
+
+void loadCustomers(vector<Customer>& customers) {
+    ifstream infile("customers.txt");
+    if (infile.is_open()) {
+        while (!infile.eof()) {
+            Customer customer("", "", "");
+            customer.loadCustomerData(infile);
+            if (!customer.getName().empty()) {
+                customers.push_back(customer);
             }
-            cout<<"press the number of the country og which u want to to book flights";
-            cin>> choice;
+        }
+        infile.close();
+    } else {
+        cout << "Error opening customers file for reading.\n";
+    }
+}
 
-            switch(choice){
-                case 1:
-                    {
-                        cout<<"DUBAI: following are the flights"<<endl;
-                        cout<<"1 dub -498, 2 dub - 500, 3 dub - 600"<<endl;
-                        cout<<"selct which flight";
-                        cin>>choice1;
+void saveFlights(const vector<Flight>& flights) {
+    ofstream outfile("flights.txt");
+    if (outfile.is_open()) {
+        for (const auto& flight : flights) {
+            flight.saveFlightData(outfile);
+        }
+        outfile.close();
+    } else {
+        cout << "Error opening flights file for writing.\n";
+    }
+}
 
-                        if(choice1==1){
-                            charges == 1000;
-                            cout<<"flight 498 booked"<<endl;
-                        }
-                        else if(choice1 == 2){
-                            charges = 2000;
-                            cout<<"flight 500 booked"<<endl;
-                        }
-                        else if(choice1 ==3){
-                            charges = 3000;
-                            cout<<"flight 600 booked"<<endl;
+void loadFlights(vector<Flight>& flights) {
+    ifstream infile("flights.txt");
+    if (infile.is_open()) {
+        while (!infile.eof()) {
+            Flight flight("", 0, 0.0);
+            flight.loadFlightData(infile);
+            if (!flight.getDestination().empty()) {
+                flights.push_back(flight);
+            }
+        }
+        infile.close();
+    } else {
+        cout << "Error opening flights file for reading.\n";
+    }
+}
 
-                        }
-                        else{
-                            cout<<"invalid"<<endl;
-                            flights();
-                        }
+bool validateIntegerInput() {
+    if (cin.fail()) {
+        cout << "Invalid input. Please enter an integer.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return false;
+    }
+    return true;
+}
 
-                        cout<<"press any key to go back to main"<<endl;
-                        cin>>back;
-                        if(back==1){
-                            mainMenu();
-                         }
-                        else{
-                            mainMenu();
-                        }
+bool validateDoubleInput() {
+    if (cin.fail()) {
+        cout << "Invalid input. Please enter a number.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return false;
+    }
+    return true;
+}
+
+int main() {
+    vector<Flight> flights;
+    vector<Customer> customers;
+    Owner owner;
+
+    
+    loadFlights(flights); // Load flights data from file
+    loadCustomers(customers); // Load customers data from file
+    for (const auto& customer : customers) {
+        cout << "Name: " << customer.getName() << ", Username: " << customer.getUsername() << ", Points: " << customer.getPoints() << "\n";
+    }
+
+    while (true) {
+        cout << "1. Sign up\n2. Choose a Flight\n3. Check Flight\n4. Admin Login\n5. Exit\n";
+        int choice;
+        cin >> choice;
+
+        if (!validateIntegerInput()) {
+            continue;
+        }
+
+        switch (choice) {
+            case 1: {
+                string customerName;
+                string customerUsername;
+               
+                string customerPassword;
+
+                cout << "Enter your name: ";
+                cin.ignore();
+                getline(cin, customerName);
+
+                do {
+                    cout << "Choose a username: ";
+                    cin >> customerUsername;
+
+                    if (isUsernameTaken(customers, customerUsername)) {
+                        cout << "Username already taken. Please choose a different one.\n";
                     }
-                case 2:
-                    {
-                        cout<<"CANADIAN aIRLIINES: following are the flights"<<endl;
-                        cout<<"1 CAD -498, 2 CAD - 500, 3 CAD - 600"<<endl;
-                        cout<<"selct which flight";
-                        cin>>choice1;
+                } while (isUsernameTaken(customers, customerUsername));
 
-                        if(choice1==1){
-                            charges == 1000;
-                            cout<<"flight 498 booked"<<endl;
-                        }
-                        else if(choice1 == 2){
-                            charges = 2000;
-                            cout<<"flight 500 booked"<<endl;
-                        }
-                        else if(choice1 ==3){
-                            charges = 3000;
-                            cout<<"flight 600 booked"<<endl;
+                cout << "Choose a password: ";
+                cin >> customerPassword;
 
-                        }
-                        else{
-                            cout<<"invalid"<<endl;
-                            flights();
-                        }
+                customers.push_back(Customer(customerName, customerUsername, customerPassword));
 
-                        cout<<"press any key to go back to main"<<endl;
-                        cin>>back;
-                        if(back==1){
-                            mainMenu();
-                         }
-                        else{
-                            mainMenu();
-                        }
+                saveCustomers(customers);  // Save updated customers data to file
+                break;
+            }
+
+            case 2: {
+                for (size_t i = 0; i < flights.size(); ++i) {
+                    cout << i + 1 << ". " << flights[i].getDestination()
+                         << " (Seats available: " << flights[i].getAvailableSeats()
+                         << ", Price: $" << fixed << setprecision(2) << flights[i].getPrice() << ")\n";
+                }
+                string customerUsername;
+                string customerPassword;
+                int flightIndex;
+
+                cout << "Enter your username: ";
+                cin >> customerUsername;
+
+                cout << "Enter your password: ";
+                cin >> customerPassword;
+
+                auto customerIt = customers.end();
+                for (auto it = customers.begin(); it != customers.end(); ++it) {
+                    if (it->authenticate(customerUsername, customerPassword)) {
+                        customerIt = it;
+                        break;
                     }
-                case 3:
-                    {
-                        cout<<"USA aIRLIINES: following are the flights"<<endl;
-                        cout<<"1 USA -498, 2 USA - 500, 3 USA - 600"<<endl;
-                        cout<<"selct which flight";
-                        cin>>choice1;
+                }
 
-                        if(choice1==1){
-                            charges == 1000;
-                            cout<<"flight 498 booked"<<endl;
-                        }
-                        else if(choice1 == 2){
-                            charges = 2000;
-                            cout<<"flight 500 booked"<<endl;
-                        }
-                        else if(choice1 ==3){
-                            charges = 3000;
-                            cout<<"flight 600 booked"<<endl;
+                if (customerIt != customers.end()) {
+                    do {
+                        cout << "Enter the flight index you want to choose (0 to finish): ";
+                        cin >> flightIndex;
 
-                        }
-                        else{
-                            cout<<"invalid"<<endl;
-                            flights();
+                        if (!validateIntegerInput()) {
+                            continue;
                         }
 
-                        cout<<"press any key to go back to main"<<endl;
-                        cin>>back;
-                        if(back==1){
-                            mainMenu();
-                         }
-                        else{
-                            mainMenu();
+                        if (flightIndex < 0 || flightIndex > flights.size()) {
+                            cout << "Invalid flight index.\n";
+                        } else if (flightIndex > 0) {
+                            if (flights[flightIndex - 1].getAvailableSeats() > 0) {
+                                customerIt->chooseFlight(flights[flightIndex - 1].getDestination(), flights[flightIndex - 1].getPrice());
+                                flights[flightIndex - 1].setAvailableSeats(flights[flightIndex - 1].getAvailableSeats() - 1);
+                                saveFlights(flights);  // Save updated flights data to file
+                            } else {
+                                cout << "No available seats for the chosen flight!\n";
+                            }
                         }
+                    } while (flightIndex != 0);
+                } else {
+                    cout << "Invalid username or password!\n";
+                }
+                break;
+            }
+
+            case 3: {
+                string customerUsername;
+                string customerPassword;
+
+                cout << "Enter your username: ";
+                cin >> customerUsername;
+
+                cout << "Enter your password: ";
+                cin >> customerPassword;
+
+                auto customerIt = customers.end();
+
+                for (auto it = customers.begin(); it != customers.end(); ++it) {
+                    if (it->authenticate(customerUsername, customerPassword)) {
+                        customerIt = it;
+                        break;
                     }
-                case 4:
-                    {
-                        cout<<"UK aIRLIINES: following are the flights"<<endl;
-                        cout<<"1 UK -498, 2 UK - 500, 3 UK - 600"<<endl;
-                        cout<<"selct which flight";
-                        cin>>choice1;
+                }
+                if (customerIt != customers.end()) {
+                    customerIt->displayChosenFlights();
+                } else {
+                    cout << "Invalid username or password\n";
+                }
+                break;
+            }
 
-                        if(choice1==1){
-                            charges == 1000;
-                            cout<<"flight 498 booked"<<endl;
-                        }
-                        else if(choice1 == 2){
-                            charges = 2000;
-                            cout<<"flight 500 booked"<<endl;
-                        }
-                        else if(choice1 ==3){
-                            charges = 3000;
-                            cout<<"flight 600 booked"<<endl;
+            case 4: {
+                string adminUsername;
+                string adminPassword;
 
-                        }
-                        else{
-                            cout<<"invalid"<<endl;
-                            flights();
-                        }
+                cout << "Enter admin username: ";
+                cin >> adminUsername;
 
-                        cout<<"press any key to go back to main"<<endl;
-                        cin>>back;
-                        if(back==1){
-                            mainMenu();
-                         }
-                        else{
-                            mainMenu();
-                        }
+                cout << "Enter admin password: ";
+                cin >> adminPassword;
+
+                if (owner.authenticate(adminUsername, adminPassword)) {
+                    cout << "Admin login successful\n";
+                    cout << "1. Select 1 to add new flights\n2. Select 2 to remove flight\n3. Select 3 to exit\n";
+                    int adminchoice;
+                    cin >> adminchoice;
+
+                    if (!validateIntegerInput()) {
+                        continue;
                     }
+
+                    switch (adminchoice) {
+                        case 1: {
+                            string dest;
+                            int price;
+                            int seats;
+                            cout << "Enter Destination:";
+                            cin.ignore();
+                            getline(cin, dest);
+                            cout << "Enter available seats:";
+                            cin >> seats;
+
+                            if (!validateIntegerInput()) {
+                                continue;
+                            }
+
+                            cout << "Enter price:";
+                            cin >> price;
+
+                            if (!validateDoubleInput()) {
+                                continue;
+                            }
+
+                            owner.addFlight(flights, dest, seats, price);
+                            saveFlights(flights);  // Save updated flights data to file
+                            break;
+                        }
+                        case 2: {
+                            cout << "Available Flights:\n";
+                            for (size_t i = 0; i < flights.size(); ++i) {
+                                cout << i + 1 << ". " << flights[i].getDestination()
+                                     << " (Seats available: " << flights[i].getAvailableSeats()
+                                     << ", Price: $" << fixed << setprecision(2) << flights[i].getPrice() << ")\n";
+                            }
+
+                            int removeIndex;
+                            cout << "Enter the index of the flight to remove:";
+                            cin >> removeIndex;
+
+                            if (!validateIntegerInput()) {
+                                continue;
+                            }
+
+                            owner.removeFlight(flights, removeIndex);
+                            saveFlights(flights);  // Save updated flights data to file
+                            break;
+                        }
+                        case 3:
+                            cout << "Logging out from admin account\n";
+                            break;
+                        default:
+                            cout << "Invalid admin choice\n";
+                    }
+                } else {
+                    cout << "Invalid admin\n";
+                }
+                break;
+            }
+
             case 5:
-                    {
-                        cout<<"Japan aIRLIINES: following are the flights"<<endl;
-                        cout<<"1 jap -498, 2 jap - 500, 3 jap - 600"<<endl;
-                        cout<<"selct which flight";
-                        cin>>choice1;
-
-                        if(choice1==1){
-                            charges == 1000;
-                            cout<<"flight 498 booked"<<endl;
-                        }
-                        else if(choice1 == 2){
-                            charges = 2000;
-                            cout<<"flight 500 booked"<<endl;
-                        }
-                        else if(choice1 ==3){
-                            charges = 3000;
-                            cout<<"flight 600 booked"<<endl;
-
-                        }
-                        else{
-                            cout<<"invalid"<<endl;
-                            flights();
-                        }
-
-                        cout<<"press any key to go back to main"<<endl;
-                        cin>>back;
-                        if(back==1){
-                            mainMenu();
-                         }
-                        else{
-                            mainMenu();
-                        }
-                    }
-            case 6:
-                    {
-                        cout<<"German aIRLIINES: following are the flights"<<endl;
-                        cout<<"1 Ger -498, 2 ger - 500, 3 ger - 600"<<endl;
-                        cout<<"selct which flight";
-                        cin>>choice1;
-
-                        if(choice1==1){
-                            charges == 1000;
-                            cout<<"flight 498 booked"<<endl;
-                        }
-                        else if(choice1 == 2){
-                            charges = 2000;
-                            cout<<"flight 500 booked"<<endl;
-                        }
-                        else if(choice1 ==3){
-                            charges = 3000;
-                            cout<<"flight 600 booked"<<endl;
-
-                        }
-                        else{
-                            cout<<"invalid"<<endl;
-                            flights();
-                        }
-
-                        cout<<"press any key to go back to main"<<endl;
-                        cin>>back;
-                        if(back==1){
-                            mainMenu();
-                         }
-                        else{
-                            mainMenu();
-                        }
-                    }
+                cout << "Exiting program.\n";
+                saveCustomers(customers);  // Save customers data to file before exiting
+                saveFlights(flights);  // Save flights data to file before exiting
+                return 0;
             default:
-                {
-                   cout<<"invalid";
-                   mainMenu(); 
-                }
-            }
-            
-        
+                cout << "Invalid choice. Please try again.\n";
         }
-
-};
-
-float registeration::charges;
-int registeration::choice;
-
-class ticket : public registeration, Details{
-    public:
-        void Bill(){
-            string desitnation = "";
-            ofstream outf("record.txt");
-            {
-                outf<<"customer Id"<<Details::cId<<endl;
-                outf<<"customer Name"<<Details::name<<endl;
-                outf<<"customer gender"<<Details::gender<<endl;
-                
-                if(registeration::choice ==1){
-                    desitnation = "Dubai";
-                }
-                else if(registeration::choice ==2){
-                    desitnation = "Canada";
-                }
-                else if(registeration::choice ==3){
-                    desitnation = "USA";
-                }
-                else if(registeration::choice ==4){
-                    desitnation = "UK";
-                }
-                else if(registeration::choice ==5){
-                    desitnation = "Japan";
-                }
-                else if(registeration::choice ==1){
-                    desitnation = "Germany";
-                }
-                outf<<"desitnation"<<desitnation<<endl;
-                outf<<"desitnation"<<registeration::charges<<endl;
-
-            }
-            outf.close();
-        }
-
-        void display(){
-            ifstream ifs("record.txt");
-                if(!ifs){
-                    cout<<"file error"<<endl;
-                }
-                while(!ifs.eof()){
-                    ifs.getline(arr,100);
-                    cout<<arr<<endl;
-                }
-            
-        ifs.close();
-        }
-
-};
-
-void mainMenu(){
-    int lchoice;
-    int schoice;
-    int back;
-
-    cout<<"YTZ Airlines\n"<<endl;
-    cout<<"press1 to add customer, 2 to add flight reg, 3 for tickt an charges, 4 to Exit"<<endl;
-    cout<<"enter choic:";
-    cin>>lchoice;
-
-    Details d;
-    registeration r;
-    ticket t;
-
-    switch(lchoice){
-        case 1:
-            {
-                cout<<"customer"<<endl;
-                d.information();
-                cout<<"press any key to go back to main menu";
-                cin>>back;
-                if(back ==1){
-                    mainMenu();
-                }
-                else{
-                    mainMenu();
-                }
-                break;
-            }
-        case 2:
-            {
-                cout<<"book flight"<<endl;
-                r.flights();
-                break;
-            }
-        case 3:{
-        cout<<"get ticket"<<endl;
-        t.Bill();
-        cout<<"press 1 to display ticket";
-        cin>>back;
-        if(back==1){
-            t.display();
-            cout<<"press any key to go back to main menu";
-            cin>>back;
-            if(back==1){
-                mainMenu();
-            }
-            else{
-                mainMenu();
-            }
-        }
-        else{
-            mainMenu();
-        }
-        break;
-    }
-    case 4:{
-        cout<<"exit"<<endl;
-        break;
     }
 
-    default:{
-        cout<<"invalid"<<endl;
-        mainMenu();
-        break;
-    }
-}
-}
-
-
-int main(){
-    Management Nobj;
+    saveCustomers(customers); // Save customers data to file before exiting
+    saveFlights(flights); // Save flights data to file before exiting
     return 0;
 }
